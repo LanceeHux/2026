@@ -382,6 +382,297 @@
       </div>
     </div>
   </div>
+<script>
+  const pdfFile = document.getElementById("pdfFile");
+  const fileName = document.getElementById("fileName");
+  const notesInput = document.getElementById("notesInput");
+  const cardCount = document.getElementById("cardCount");
+  const cardStyle = document.getElementById("cardStyle");
+  const extractBtn = document.getElementById("extractBtn");
+  const generateBtn = document.getElementById("generateBtn");
+  const loadDemoBtn = document.getElementById("loadDemoBtn");
+  const clearBtn = document.getElementById("clearBtn");
+  const statusText = document.getElementById("statusText");
+  const viewerArea = document.getElementById("viewerArea");
+  const countText = document.getElementById("countText");
 
-<script> const pdfFile = document.getElementById("pdfFile"); const fileName = document.getElementById("fileName"); const notesInput = document.getElementById("notesInput"); const cardCount = document.getElementById("cardCount"); const cardStyle = document.getElementById("cardStyle"); const extractBtn = document.getElementById("extractBtn"); const generateBtn = document.getElementById("generateBtn"); const loadDemoBtn = document.getElementById("loadDemoBtn"); const clearBtn = document.getElementById("clearBtn"); const statusText = document.getElementById("statusText"); const viewerArea = document.getElementById("viewerArea"); const countText = document.getElementById("countText"); let flashcards = []; let currentIndex = 0; let showAnswer = false; pdfFile.addEventListener("change", () => { const file = pdfFile.files?.[0]; fileName.textContent = file ? file.name : "No file selected"; }); function escapeHtml(str) { return String(str || "") .replaceAll("&", "&amp;") .replaceAll("<", "&lt;") .replaceAll(">", "&gt;") .replaceAll('"', "&quot;") .replaceAll("'", "&#039;"); } function shorten(text) { return text.length > 90 ? text.slice(0, 90) + "..." : text; } function makeQuestion(topic, style, num) { const safeTopic = shorten(topic); if (style === "definition") return Define ${safeTopic}.; if (style === "concept") return Explain ${safeTopic}.; if (style === "mixed") { const mixed = [ What is ${safeTopic}?, Why is ${safeTopic} important?, Explain ${safeTopic} briefly., What does ${safeTopic} refer to? ]; return mixed[(num - 1) % mixed.length]; } return What is ${safeTopic}?; } function renderViewer() { countText.textContent = ${flashcards.length} card${flashcards.length === 1 ? "" : "s"}; if (!flashcards.length) { viewerArea.innerHTML = <div class="empty"> No flashcards yet. Upload a reviewer or load the demo deck. </div> ; return; } const current = flashcards[currentIndex]; const sideText = showAnswer ? current.answer : current.question; const sideLabel = showAnswer ? "Answer side" : "Question side"; viewerArea.innerHTML = <div class="flashcard" id="flashcardBox"> <small>${sideLabel} · click card to flip</small> <div class="content">${escapeHtml(sideText)}</div> </div> <div class="controls"> <button type="button" id="prevBtn">Previous</button> <button type="button" id="flipBtn">${showAnswer ? "Show Question" : "Show Answer"}</button> <button type="button" id="nextBtn">Next</button> </div> ; document.getElementById("flashcardBox").addEventListener("click", () => { showAnswer = !showAnswer; renderViewer(); }); document.getElementById("flipBtn").addEventListener("click", () => { showAnswer = !showAnswer; renderViewer(); }); document.getElementById("prevBtn").addEventListener("click", () => { currentIndex = (currentIndex - 1 + flashcards.length) % flashcards.length; showAnswer = false; renderViewer(); }); document.getElementById("nextBtn").addEventListener("click", () => { currentIndex = (currentIndex + 1) % flashcards.length; showAnswer = false; renderViewer(); }); } function isLikelyTitle(line) { if (!line) return false; if (line.length > 60) return false; if (/[.:;!?]$/.test(line)) return false; const words = line.split(/\s+/).filter(Boolean); if (words.length === 0 || words.length > 5) return false; return words.every((w) => { const clean = w.replace(/[^A-Za-z0-9-]/g, ""); if (!clean) return true; return /^[A-Z0-9]/.test(clean); }); } function cleanExtractedText(text) { const rawLines = String(text || "") .replace(/\r/g, "") .split("\n") .map((l) => l.replace(/\s+/g, " ").trim()) .filter(Boolean); const blocks = []; let current = null; for (const line of rawLines) { if (isLikelyTitle(line)) { if (current) blocks.push(current); current = { topic: line, details: [] }; } else { if (!current) { current = { topic: line, details: [] }; } else { current.details.push(line); } } } if (current) blocks.push(current); return blocks .map((block) => { const topic = block.topic.trim(); const answer = block.details.join(" ").trim(); return answer ? ${topic}\n${answer} : topic; }) .join("\n\n") .trim(); } function parseBlocks(notes) { return notes .split(/\n\s*\n/) .map((b) => b.trim()) .filter(Boolean) .map((block) => { const lines = block .split("\n") .map((l) => l.trim()) .filter(Boolean); const topic = lines[0] || ""; const answer = lines.slice(1).join(" ").trim(); return { topic, answer: answer || topic }; }) .filter((b) => b.topic); } loadDemoBtn.addEventListener("click", () => { flashcards = [ { question: "What is Leeyam's situation nowadays?", answer: "STRESS NA AKOOOOOO" }, { question: "Can everyone use his flashcards project?", answer: "Everyone can use this flashcard reviewer project for free." }, { question: "How is this project made?", answer: "The developer just woke up one day then he knew everything about this." } ]; currentIndex = 0; showAnswer = false; statusText.textContent = "Demo deck loaded."; renderViewer(); }); clearBtn.addEventListener("click", () => { pdfFile.value = ""; fileName.textContent = "No file selected"; notesInput.value = ""; flashcards = []; currentIndex = 0; showAnswer = false; statusText.textContent = "Cleared."; renderViewer(); }); extractBtn.addEventListener("click", async () => { const file = pdfFile.files?.[0]; if (!file) { statusText.textContent = "Please choose a PDF first."; return; } statusText.textContent = "Reading PDF..."; try { const arrayBuffer = await file.arrayBuffer(); const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise; let text = ""; for (let i = 1; i <= pdf.numPages; i++) { const page = await pdf.getPage(i); const content = await page.getTextContent(); const strings = content.items.map((item) => item.str); text += strings.join("\n") + "\n\n"; } const cleaned = cleanExtractedText(text); notesInput.value = cleaned; statusText.textContent = PDF text extracted successfully (${cleaned.length} characters).; } catch (err) { console.error(err); statusText.textContent = "PDF extraction failed. The file may be image-based."; } }); generateBtn.addEventListener("click", async () => { const notes = notesInput.value.trim(); const requestedCount = Number(cardCount.value || 10); if (!notes) { statusText.textContent = "Please extract PDF text or paste notes first."; return; } statusText.textContent = "Generating AI flashcards..."; try { const res = await fetch("https://personal-backend-two.vercel.app/api/flashcards", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ notes, count: requestedCount }) }); const data = await res.json(); if (!res.ok) { statusText.textContent = "AI error: " + (data.error || "Request failed"); return; } flashcards = Array.isArray(data.cards) ? data.cards : []; currentIndex = 0; showAnswer = false; statusText.textContent = flashcards.length ? AI generated ${flashcards.length} flashcards. : "No flashcards were generated."; renderViewer(); } catch (err) { console.error(err); statusText.textContent = "Could not connect to AI flashcard generator."; } }); renderViewer(); </script></body>
+  let flashcards = [];
+  let currentIndex = 0;
+  let showAnswer = false;
+
+  pdfFile.addEventListener("change", () => {
+    const file = pdfFile.files?.[0];
+    fileName.textContent = file ? file.name : "No file selected";
+  });
+
+  function escapeHtml(str) {
+    return String(str || "")
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#039;");
+  }
+
+  function shorten(text) {
+    return text.length > 90 ? text.slice(0, 90) + "..." : text;
+  }
+
+  function makeQuestion(topic, style, num) {
+    const safeTopic = shorten(topic);
+
+    if (style === "definition") return `Define ${safeTopic}.`;
+    if (style === "concept") return `Explain ${safeTopic}.`;
+    if (style === "mixed") {
+      const mixed = [
+        `What is ${safeTopic}?`,
+        `Why is ${safeTopic} important?`,
+        `Explain ${safeTopic} briefly.`,
+        `What does ${safeTopic} refer to?`
+      ];
+      return mixed[(num - 1) % mixed.length];
+    }
+
+    return `What is ${safeTopic}?`;
+  }
+
+  function renderViewer() {
+    countText.textContent = `${flashcards.length} card${flashcards.length === 1 ? "" : "s"}`;
+
+    if (!flashcards.length) {
+      viewerArea.innerHTML = `
+        <div class="empty">
+          No flashcards yet. Upload a reviewer or load the demo deck.
+        </div>
+      `;
+      return;
+    }
+
+    const current = flashcards[currentIndex];
+    const sideText = showAnswer ? current.answer : current.question;
+    const sideLabel = showAnswer ? "Answer side" : "Question side";
+
+    viewerArea.innerHTML = `
+      <div class="flashcard" id="flashcardBox">
+        <small>${sideLabel} · click card to flip</small>
+        <div class="content">${escapeHtml(sideText)}</div>
+      </div>
+
+      <div class="controls">
+        <button type="button" id="prevBtn">Previous</button>
+        <button type="button" id="flipBtn">${showAnswer ? "Show Question" : "Show Answer"}</button>
+        <button type="button" id="nextBtn">Next</button>
+      </div>
+    `;
+
+    document.getElementById("flashcardBox").addEventListener("click", () => {
+      showAnswer = !showAnswer;
+      renderViewer();
+    });
+
+    document.getElementById("flipBtn").addEventListener("click", () => {
+      showAnswer = !showAnswer;
+      renderViewer();
+    });
+
+    document.getElementById("prevBtn").addEventListener("click", () => {
+      currentIndex = (currentIndex - 1 + flashcards.length) % flashcards.length;
+      showAnswer = false;
+      renderViewer();
+    });
+
+    document.getElementById("nextBtn").addEventListener("click", () => {
+      currentIndex = (currentIndex + 1) % flashcards.length;
+      showAnswer = false;
+      renderViewer();
+    });
+  }
+
+  function isLikelyTitle(line) {
+    if (!line) return false;
+    if (line.length > 60) return false;
+    if (/[.:;!?]$/.test(line)) return false;
+
+    const words = line.split(/\s+/).filter(Boolean);
+    if (words.length === 0 || words.length > 5) return false;
+
+    return words.every((w) => {
+      const clean = w.replace(/[^A-Za-z0-9-]/g, "");
+      if (!clean) return true;
+      return /^[A-Z0-9]/.test(clean);
+    });
+  }
+
+  function cleanExtractedText(text) {
+    const rawLines = String(text || "")
+      .replace(/\r/g, "")
+      .split("\n")
+      .map((l) => l.replace(/\s+/g, " ").trim())
+      .filter(Boolean);
+
+    const blocks = [];
+    let current = null;
+
+    for (const line of rawLines) {
+      if (isLikelyTitle(line)) {
+        if (current) blocks.push(current);
+        current = { topic: line, details: [] };
+      } else {
+        if (!current) {
+          current = { topic: line, details: [] };
+        } else {
+          current.details.push(line);
+        }
+      }
+    }
+
+    if (current) blocks.push(current);
+
+    return blocks
+      .map((block) => {
+        const topic = block.topic.trim();
+        const answer = block.details.join(" ").trim();
+        return answer ? `${topic}\n${answer}` : topic;
+      })
+      .join("\n\n")
+      .trim();
+  }
+
+  function parseBlocks(notes) {
+    return notes
+      .split(/\n\s*\n/)
+      .map((b) => b.trim())
+      .filter(Boolean)
+      .map((block) => {
+        const lines = block
+          .split("\n")
+          .map((l) => l.trim())
+          .filter(Boolean);
+
+        const topic = lines[0] || "";
+        const answer = lines.slice(1).join(" ").trim();
+
+        return {
+          topic,
+          answer: answer || topic
+        };
+      })
+      .filter((b) => b.topic);
+  }
+
+  loadDemoBtn.addEventListener("click", () => {
+    flashcards = [
+      {
+        question: "What is qualitative research?",
+        answer: "A type of research that focuses on understanding meanings, experiences, and perceptions."
+      },
+      {
+        question: "What is phenomenology?",
+        answer: "A qualitative approach used to explore and describe lived experiences."
+      },
+      {
+        question: "Why is purposive sampling used?",
+        answer: "It helps researchers choose participants who are relevant to the study."
+      }
+    ];
+
+    currentIndex = 0;
+    showAnswer = false;
+    statusText.textContent = "Demo deck loaded.";
+    renderViewer();
+  });
+
+  clearBtn.addEventListener("click", () => {
+    pdfFile.value = "";
+    fileName.textContent = "No file selected";
+    notesInput.value = "";
+    flashcards = [];
+    currentIndex = 0;
+    showAnswer = false;
+    statusText.textContent = "Cleared.";
+    renderViewer();
+  });
+
+  extractBtn.addEventListener("click", async () => {
+    const file = pdfFile.files?.[0];
+
+    if (!file) {
+      statusText.textContent = "Please choose a PDF first.";
+      return;
+    }
+
+    statusText.textContent = "Reading PDF...";
+
+    try {
+      const arrayBuffer = await file.arrayBuffer();
+      const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+
+      let text = "";
+
+      for (let i = 1; i <= pdf.numPages; i++) {
+        const page = await pdf.getPage(i);
+        const content = await page.getTextContent();
+        const strings = content.items.map((item) => item.str);
+        text += strings.join("\n") + "\n\n";
+      }
+
+      const cleaned = cleanExtractedText(text);
+      notesInput.value = cleaned;
+      statusText.textContent = `PDF text extracted successfully (${cleaned.length} characters).`;
+    } catch (err) {
+      console.error(err);
+      statusText.textContent = "PDF extraction failed. The file may be image-based.";
+    }
+  });
+
+ 
+  generateBtn.addEventListener("click", async () => {
+    const notes = notesInput.value.trim();
+    const requestedCount = Number(cardCount.value || 10);
+
+    if (!notes) {
+      statusText.textContent = "Please extract PDF text or paste notes first.";
+      return;
+    }
+
+    statusText.textContent = "Generating AI flashcards...";
+
+    try {
+      const res = await fetch("https://personal-backend.app/api/flashcards", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          notes,
+          count: requestedCount
+        })
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        statusText.textContent = "AI error: " + (data.error || "Request failed");
+        return;
+      }
+
+      flashcards = Array.isArray(data.cards) ? data.cards : [];
+      currentIndex = 0;
+      showAnswer = false;
+
+      statusText.textContent = flashcards.length
+        ? `AI generated ${flashcards.length} flashcards.`
+        : "No flashcards were generated.";
+
+      renderViewer();
+    } catch (err) {
+      console.error(err);
+      statusText.textContent = "Could not connect to AI flashcard generator.";
+    }
+  });
+
+
+  renderViewer();
+</script>
+</body>
 </html>
