@@ -383,6 +383,7 @@
     </div>
   </div>
 
+<script src="https://unpkg.com/mammoth/mammoth.browser.min.js"></script>
 <script>
   const pdfFile = document.getElementById("pdfFile");
   const fileName = document.getElementById("fileName");
@@ -561,6 +562,40 @@
       .filter((b) => b.topic);
   }
 
+  async function extractPdfText(file) {
+    const arrayBuffer = await file.arrayBuffer();
+    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+
+    let text = "";
+
+    for (let i = 1; i <= pdf.numPages; i++) {
+      const page = await pdf.getPage(i);
+      const content = await page.getTextContent();
+      const strings = content.items.map((item) => item.str);
+      text += strings.join("\n") + "\n\n";
+    }
+
+    return text;
+  }
+
+  async function extractDocxText(file) {
+    const arrayBuffer = await file.arrayBuffer();
+    const result = await mammoth.extractRawText({ arrayBuffer });
+    return result.value || "";
+  }
+
+  function getFileType(file) {
+    if (!file) return "";
+
+    const name = (file.name || "").toLowerCase();
+
+    if (name.endsWith(".pdf")) return "pdf";
+    if (name.endsWith(".docx")) return "docx";
+    if (name.endsWith(".doc")) return "doc";
+
+    return "";
+  }
+
   loadDemoBtn.addEventListener("click", () => {
     flashcards = [
       {
@@ -598,41 +633,44 @@
     const file = pdfFile.files?.[0];
 
     if (!file) {
-      statusText.textContent = "Please choose a PDF first.";
+      statusText.textContent = "Please choose a PDF, DOC, or DOCX file first.";
       return;
     }
 
-    statusText.textContent = "Reading PDF...";
+    const fileType = getFileType(file);
 
     try {
-      const arrayBuffer = await file.arrayBuffer();
-      const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-
       let text = "";
 
-      for (let i = 1; i <= pdf.numPages; i++) {
-        const page = await pdf.getPage(i);
-        const content = await page.getTextContent();
-        const strings = content.items.map((item) => item.str);
-        text += strings.join("\n") + "\n\n";
+      if (fileType === "pdf") {
+        statusText.textContent = "Reading PDF...";
+        text = await extractPdfText(file);
+      } else if (fileType === "docx") {
+        statusText.textContent = "Reading DOCX...";
+        text = await extractDocxText(file);
+      } else if (fileType === "doc") {
+        statusText.textContent = "DOC files are not reliably supported in-browser. Please convert it to DOCX or PDF first.";
+        return;
+      } else {
+        statusText.textContent = "Unsupported file type. Please upload PDF, DOC, or DOCX.";
+        return;
       }
 
       const cleaned = cleanExtractedText(text);
       notesInput.value = cleaned;
-      statusText.textContent = `PDF text extracted successfully (${cleaned.length} characters).`;
+      statusText.textContent = `${fileType.toUpperCase()} text extracted successfully (${cleaned.length} characters).`;
     } catch (err) {
       console.error(err);
-      statusText.textContent = "PDF extraction failed. The file may be image-based.";
+      statusText.textContent = "Extraction failed. The file may be image-based, damaged, or unsupported.";
     }
   });
 
- 
   generateBtn.addEventListener("click", async () => {
     const notes = notesInput.value.trim();
     const requestedCount = Number(cardCount.value || 10);
 
     if (!notes) {
-      statusText.textContent = "Please extract PDF text or paste notes first.";
+      statusText.textContent = "Please extract text or paste notes first.";
       return;
     }
 
@@ -672,8 +710,6 @@
     }
   });
 
-
   renderViewer();
-</script>
-</body>
+</script></body>
 </html>
