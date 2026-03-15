@@ -921,8 +921,20 @@
       likesCount.textContent = data.likes;
   })
   .catch(err => console.error(err));
-
+likeBtn.disabled = true;
 });
+
+function loadLikes(){
+
+  fetch("https://personal-backend.wuaze.com/api/getLikes.php")
+  .then(res => res.json())
+  .then(data => {
+      document.getElementById("likesCount").textContent = data.likes;
+  });
+
+}
+
+loadLikes();
   </script>
 </body>
 </html>
