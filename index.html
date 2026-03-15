@@ -639,7 +639,7 @@
           <div class="stat">
             <strong id='likesCount'>12</strong>
             <span>Likes</span>
-            <button></button>
+            <button id="likeBtn" class="project-btn">👍 Like</button>
           </div>
       </div>
     </div>
@@ -853,6 +853,9 @@
     const filterBtns = [...document.querySelectorAll('.filter-btn')];
     const projectCards = [...document.querySelectorAll('.project-card')];
     const reveals = document.querySelectorAll('.reveal');
+    // like functions
+    const likeBtn = document.getElementById("likeBtn");
+    const likesCount = document.getElementById("likesCount");
 
     menuBtn.addEventListener('click', () => {
       navLinks.classList.toggle('open');
@@ -907,6 +910,19 @@
     setActiveLink();
 
     document.getElementById('year').textContent = new Date().getFullYear();
+
+    likeBtn.addEventListener("click", () => {
+
+  fetch("https://yourinfinityfreeurl.com/like.php", {
+    method: "POST"
+  })
+  .then(res => res.json())
+  .then(data => {
+      likesCount.textContent = data.likes;
+  })
+  .catch(err => console.error(err));
+
+});
   </script>
 </body>
 </html>
