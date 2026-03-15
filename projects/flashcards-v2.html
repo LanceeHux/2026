@@ -501,21 +501,6 @@
   });
 }
 
-    feedbackBox.innerHTML = `
-      <div class="score ${scoreClass}">Score: ${escapeHtml(String(score))}/100</div>
-      <p style="margin-bottom:10px;"><strong>Verdict:</strong> ${escapeHtml(result.verdict || "unknown")}</p>
-      <p style="margin-bottom:10px;"><strong>Feedback:</strong> ${escapeHtml(result.feedback || "No feedback.")}</p>
-      <p style="margin-bottom:10px;"><strong>Strong points:</strong> ${escapeHtml(Array.isArray(result.strong_points) ? result.strong_points.join(", ") : String(result.strong_points || "None"))}</p>
-      <p style="margin-bottom:10px;"><strong>Missed points:</strong> ${escapeHtml(Array.isArray(result.missed_points) ? result.missed_points.join(", ") : String(result.missed_points || "None"))}</p>
-      <p style="margin-bottom:10px;"><strong>Better answer:</strong> ${escapeHtml(result.corrected_answer || questionObj.answer_idea || "")}</p>
-      <p class="muted"><strong>Expected idea:</strong> ${escapeHtml(questionObj.answer_idea || "")}</p>
-    `;
-
-    lastScore.textContent = String(score);
-    if (score > best) {
-      best = score;
-      bestScore.textContent = String(best);
-    }
   
 
   extractBtn.addEventListener("click", async () => {
