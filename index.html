@@ -637,7 +637,7 @@
             <span>Active</span>
         </div>
           <div class="stat">
-            <strong id='likesCount'>12</strong>
+            <strong id='likesCount'>0</strong>
             <span>Likes</span>
             <button id="likeBtn" class="project-btn">👍 Like</button>
           </div>
@@ -846,95 +846,101 @@
   </footer>
 
   <script>
-    const menuBtn = document.getElementById('menuBtn');
-    const navLinks = document.getElementById('navLinks');
-    const links = [...document.querySelectorAll('.nav-links a')];
-    const sections = [...document.querySelectorAll('section, header')];
-    const filterBtns = [...document.querySelectorAll('.filter-btn')];
-    const projectCards = [...document.querySelectorAll('.project-card')];
-    const reveals = document.querySelectorAll('.reveal');
-    // like functions
-    const likeBtn = document.getElementById("likeBtn");
-    const likesCount = document.getElementById("likesCount");
+  const menuBtn = document.getElementById('menuBtn');
+  const navLinks = document.getElementById('navLinks');
+  const links = [...document.querySelectorAll('.nav-links a')];
+  const sections = [...document.querySelectorAll('section, header')];
+  const filterBtns = [...document.querySelectorAll('.filter-btn')];
+  const projectCards = [...document.querySelectorAll('.project-card')];
+  const reveals = document.querySelectorAll('.reveal');
 
-    menuBtn.addEventListener('click', () => {
-      navLinks.classList.toggle('open');
+  const likeBtn = document.getElementById("likeBtn");
+  const likesCount = document.getElementById("likesCount");
+
+  menuBtn.addEventListener('click', () => {
+    navLinks.classList.toggle('open');
+  });
+
+  links.forEach(link => {
+    link.addEventListener('click', () => navLinks.classList.remove('open'));
+  });
+
+  filterBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      filterBtns.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+
+      const filter = btn.dataset.filter;
+
+      projectCards.forEach(card => {
+        const match = filter === 'all' || card.dataset.category === filter;
+        card.style.display = match ? 'block' : 'none';
+      });
+    });
+  });
+
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('visible');
+      }
+    });
+  }, { threshold: 0.14 });
+
+  reveals.forEach(item => observer.observe(item));
+
+  const setActiveLink = () => {
+    let currentId = 'home';
+
+    sections.forEach(section => {
+      const top = window.scrollY;
+      const offset = section.offsetTop - 140;
+      const height = section.offsetHeight;
+      if (top >= offset && top < offset + height) {
+        currentId = section.id;
+      }
     });
 
     links.forEach(link => {
-      link.addEventListener('click', () => navLinks.classList.remove('open'));
+      link.classList.toggle('active', link.getAttribute('href') === `#${currentId}`);
     });
+  };
 
-    filterBtns.forEach(btn => {
-      btn.addEventListener('click', () => {
-        filterBtns.forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
+  window.addEventListener('scroll', setActiveLink);
+  setActiveLink();
 
-        const filter = btn.dataset.filter;
+  document.getElementById('year').textContent = new Date().getFullYear();
 
-        projectCards.forEach(card => {
-          const match = filter === 'all' || card.dataset.category === filter;
-          card.style.display = match ? 'block' : 'none';
-        });
+  function loadLikes() {
+    fetch("https://personal-backend.wuaze.com/api/getlikes.php")
+      .then(response => response.text())
+      .then(text => {
+        console.log("RAW getLikes response:", text);
+        const data = JSON.parse(text);
+        likesCount.textContent = data.likes;
+      })
+      .catch(error => {
+        console.error("loadLikes error:", error);
       });
-    });
+  }
 
-    const observer = new IntersectionObserver((entries) => {
-      entries.forEach(entry => {
-        if (entry.isIntersecting) {
-          entry.target.classList.add('visible');
-        }
+  likeBtn.addEventListener("click", () => {
+    fetch("https://personal-backend.wuaze.com/api/likes.php", {
+      method: "POST"
+    })
+      .then(response => response.text())
+      .then(text => {
+        console.log("RAW likes response:", text);
+        const data = JSON.parse(text);
+        likesCount.textContent = data.likes;
+        likeBtn.disabled = true;
+      })
+      .catch(error => {
+        console.error("like error:", error);
       });
-    }, { threshold: 0.14 });
-
-    reveals.forEach(item => observer.observe(item));
-
-    const setActiveLink = () => {
-      let currentId = 'home';
-
-      sections.forEach(section => {
-        const top = window.scrollY;
-        const offset = section.offsetTop - 140;
-        const height = section.offsetHeight;
-        if (top >= offset && top < offset + height) {
-          currentId = section.id;
-        }
-      });
-
-      links.forEach(link => {
-        link.classList.toggle('active', link.getAttribute('href') === `#${currentId}`);
-      });
-    };
-
-    window.addEventListener('scroll', setActiveLink);
-    setActiveLink();
-
-    document.getElementById('year').textContent = new Date().getFullYear();
-
-    likeBtn.addEventListener("click", () => {
-
-  fetch("https://personal-backend.wuaze.com/api/likes.php", {
-    method: "POST"
-  })
-  .then(res => res.json())
-  .then(data => {
-      likesCount.textContent = data.likes;
-  })
-  .catch(err => console.error(err));
-likeBtn.disabled = true;
-});
-
-function loadLikes(){
-
-  fetch("https://personal-backend.wuaze.com/api/getLikes.php")
-  .then(res => res.json())
-  .then(data => {
-      document.getElementById("likesCount").textContent = data.likes;
   });
 
-}
-
-loadLikes();
-  </script>
+  loadLikes();
+</script>
 </body>
 </html>
