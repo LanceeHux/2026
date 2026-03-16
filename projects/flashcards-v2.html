@@ -22,6 +22,7 @@
     }
 
     * { box-sizing: border-box; }
+
     body {
       margin: 0;
       font-family: Inter, system-ui, Arial, sans-serif;
@@ -127,16 +128,29 @@
       border: 1px solid var(--line);
     }
 
+    .btn-secondary:hover {
+      border-color: rgba(255,205,0,.26);
+      transform: translateY(-1px);
+    }
+
     .btn-danger {
       background: rgba(255,91,122,.12);
       color: #ffd7df;
       border: 1px solid rgba(255,91,122,.35);
     }
 
+    .btn-danger:hover {
+      transform: translateY(-1px);
+    }
+
     .toolbar {
       display: grid;
       grid-template-columns: 1fr 1fr;
       gap: 12px;
+    }
+
+    .toolbar .full {
+      grid-column: 1 / -1;
     }
 
     .status {
@@ -148,6 +162,7 @@
       color: var(--muted);
       min-height: 54px;
       white-space: pre-wrap;
+      line-height: 1.5;
     }
 
     .question-box, .feedback-box {
@@ -176,6 +191,7 @@
     .feedback-box {
       margin-top: 16px;
       min-height: 130px;
+      line-height: 1.6;
     }
 
     .score {
@@ -226,58 +242,99 @@
       font-size: 1.2rem;
     }
 
-    code.inline {
-      background: rgba(255,255,255,.06);
-      border: 1px solid var(--line);
-      padding: 2px 8px;
-      border-radius: 8px;
+    .choices-box {
+      display: grid;
+      gap: 12px;
+      margin-top: 10px;
     }
 
-    .choices-box {
-  display: grid;
-  gap: 12px;
-  margin-top: 10px;
-}
+    .choice-btn {
+      width: 100%;
+      text-align: left;
+      background: var(--panel-2);
+      color: var(--text);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 14px 16px;
+      font: inherit;
+      font-weight: 600;
+      cursor: pointer;
+      transition: .2s ease;
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+    }
 
-.choice-btn {
-  width: 100%;
-  text-align: left;
-  background: var(--panel-2);
-  color: var(--text);
-  border: 1px solid var(--line);
-  border-radius: 16px;
-  padding: 14px 16px;
-  font: inherit;
-  font-weight: 600;
-  cursor: pointer;
-  transition: .2s ease;
-}
+    .choice-btn:hover {
+      transform: translateY(-1px);
+      border-color: rgba(255,205,0,.35);
+    }
 
-.choice-btn:hover {
-  transform: translateY(-1px);
-  border-color: rgba(255,205,0,.35);
-}
+    .choice-btn.selected {
+      border-color: var(--gold);
+      box-shadow: 0 0 0 2px rgba(255,205,0,.15) inset;
+      background: rgba(255,205,0,.08);
+    }
 
-.choice-btn.selected {
-  border-color: var(--gold);
-  box-shadow: 0 0 0 2px rgba(255,205,0,.15) inset;
-  background: rgba(255,205,0,.08);
-}
+    .choice-btn.correct {
+      background: rgba(57,217,138,.12);
+      border-color: rgba(57,217,138,.4);
+      color: #b7ffd7;
+    }
 
-.choice-btn.correct {
-  background: rgba(57,217,138,.12);
-  border-color: rgba(57,217,138,.4);
-  color: #b7ffd7;
-}
+    .choice-btn.wrong {
+      background: rgba(255,91,122,.12);
+      border-color: rgba(255,91,122,.4);
+      color: #ffd0d8;
+    }
 
-.choice-btn.wrong {
-  background: rgba(255,91,122,.12);
-  border-color: rgba(255,91,122,.4);
-  color: #ffd0d8;
-}
-    
+    .choice-badge {
+      width: 32px;
+      height: 32px;
+      min-width: 32px;
+      border-radius: 999px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(255,205,0,.12);
+      color: var(--gold);
+      border: 1px solid rgba(255,205,0,.25);
+      font-size: .82rem;
+      font-weight: 800;
+    }
+
+    .choice-text {
+      flex: 1;
+      line-height: 1.5;
+    }
+
+    .session-actions {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-top: 16px;
+    }
+
+    .helper-line {
+      margin-top: 8px;
+      font-size: .92rem;
+      color: var(--muted);
+    }
+
     @media (max-width: 920px) {
       .wrap { grid-template-columns: 1fr; }
+    }
+
+    @media (max-width: 620px) {
+      .toolbar,
+      .row,
+      .mini {
+        grid-template-columns: 1fr;
+      }
+
+      .session-actions {
+        flex-direction: column;
+      }
     }
   </style>
 </head>
@@ -286,14 +343,13 @@
     <section class="card sidebar">
       <div class="eyebrow">Flashcard V2</div>
       <h1 class="title">PDF to question-answer practice</h1>
-      <p class="muted">Upload a PDF, extract its text, AI will review and will ask you a questionnn</p>
+      <p class="muted">Upload a PDF, extract its text, and let the AI generate multiple-choice questions from your reviewer.</p>
 
       <div class="stack">
-        
-
         <div>
           <label for="pdfFile">Reviewer PDF</label>
           <input id="pdfFile" type="file" accept="application/pdf" />
+          <div class="helper-line" id="fileLabel">No file selected</div>
         </div>
 
         <div>
@@ -323,8 +379,9 @@
 
         <div class="toolbar">
           <button class="btn-primary" id="extractBtn">Extract PDF Text</button>
-          <button class="btn-secondary" id="generateBtn">Generate Question</button>
-          <button class="btn-danger" id="clearBtn">Clear</button>
+          <button class="btn-secondary" id="generateBtn" disabled>Generate Question</button>
+          <button class="btn-secondary full" id="nextBtn" disabled>Next Question</button>
+          <button class="btn-danger full" id="clearBtn">Clear</button>
         </div>
 
         <div class="status" id="statusText">Ready. Upload a PDF, extract text, then generate a question.</div>
@@ -334,7 +391,7 @@
     <section class="card main">
       <div class="eyebrow">Session</div>
       <h2 class="title" style="font-size: clamp(1.4rem, 2.5vw, 2rem);">Interactive flashcard reviewer</h2>
-      <p class="muted">Instead of simply showing a card, this page asks a question and evaluates your answer against the source idea from the PDF.</p>
+      <p class="muted">This turns your reviewer into an AI-powered practice page with instant checking.</p>
 
       <div class="mini">
         <div class="item"><strong id="qCount">0</strong><span class="muted">Questions asked</span></div>
@@ -348,261 +405,316 @@
       </div>
 
       <div class="answer-area">
-  <label>Choose your answer</label>
-  <div id="choicesBox" class="choices-box">
-    <div class="muted">Choices will appear here after generating a question.</div>
-  </div>
-</div>
+        <label>Choose your answer</label>
+        <div id="choicesBox" class="choices-box">
+          <div class="muted">Choices will appear here after generating a question.</div>
+        </div>
+      </div>
 
       <div class="feedback-box" id="feedbackBox">
-        <div class="muted">AI feedback will appear here after you submit your answer.</div>
+        <div class="muted">AI feedback will appear here after you answer a question.</div>
+      </div>
+
+      <div class="session-actions">
+        <button class="btn-primary" id="mainNextBtn" disabled>Next Question</button>
       </div>
     </section>
   </div>
 
   <script>
-  pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+    pdfjsLib.GlobalWorkerOptions.workerSrc =
+      "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
 
-  const pdfFile = document.getElementById("pdfFile");
-  const sourceText = document.getElementById("sourceText");
-  const difficulty = document.getElementById("difficulty");
-  const focusType = document.getElementById("focusType");
-  const extractBtn = document.getElementById("extractBtn");
-  const generateBtn = document.getElementById("generateBtn");
-  const checkBtn = document.getElementById("checkBtn");
-  const clearBtn = document.getElementById("clearBtn");
-  const statusText = document.getElementById("statusText");
-  const questionNumber = document.getElementById("questionNumber");
-  const questionText = document.getElementById("questionText");
-  const choicesBox = document.getElementById("choicesBox");
-  const feedbackBox = document.getElementById("feedbackBox");
-  const qCount = document.getElementById("qCount");
-  const bestScore = document.getElementById("bestScore");
-  const lastScore = document.getElementById("lastScore");
+    const API_URL = "https://personal-backend-two.vercel.app/api/generate-quiz";
 
-  let currentQuestion = null;
-  let askedCount = 0;
-  let best = 0;
-  let selectedChoice = null;
-  let isChecking = false;
+    const pdfFile = document.getElementById("pdfFile");
+    const fileLabel = document.getElementById("fileLabel");
+    const sourceText = document.getElementById("sourceText");
+    const difficulty = document.getElementById("difficulty");
+    const focusType = document.getElementById("focusType");
 
-  const API_BASE = "https://personal-backend-two.vercel.app/api";
+    const extractBtn = document.getElementById("extractBtn");
+    const generateBtn = document.getElementById("generateBtn");
+    const nextBtn = document.getElementById("nextBtn");
+    const mainNextBtn = document.getElementById("mainNextBtn");
+    const clearBtn = document.getElementById("clearBtn");
 
-  function setStatus(message) {
-    statusText.textContent = message;
-  }
+    const statusText = document.getElementById("statusText");
+    const qCount = document.getElementById("qCount");
+    const bestScore = document.getElementById("bestScore");
+    const lastScore = document.getElementById("lastScore");
+    const questionNumber = document.getElementById("questionNumber");
+    const questionText = document.getElementById("questionText");
+    const choicesBox = document.getElementById("choicesBox");
+    const feedbackBox = document.getElementById("feedbackBox");
 
-  function escapeHtml(str) {
-    return String(str || "")
-      .replaceAll("&", "&amp;")
-      .replaceAll("<", "&lt;")
-      .replaceAll(">", "&gt;")
-      .replaceAll('"', "&quot;")
-      .replaceAll("'", "&#039;");
-  }
+    let currentQuiz = null;
+    let previousQuestions = [];
+    let questionsAsked = 0;
+    let bestScoreValue = 0;
+    let lastScoreValue = 0;
+    let answeredCurrent = false;
 
-  async function extractPdfText(file) {
-    const arrayBuffer = await file.arrayBuffer();
-    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-    let fullText = "";
+    pdfFile.addEventListener("change", () => {
+      const file = pdfFile.files?.[0];
+      fileLabel.textContent = file ? file.name : "No file selected";
+    });
 
-    for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
-      const page = await pdf.getPage(pageNum);
-      const content = await page.getTextContent();
-      const pageText = content.items.map(item => item.str).join(" ");
-      fullText += pageText + "\n\n";
+    function setStatus(message) {
+      statusText.textContent = message;
     }
 
-    return fullText.trim();
-  }
-
-  async function callBackend(endpoint, payload) {
-    const response = await fetch(`${API_BASE}/${endpoint}`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify(payload)
-    });
-
-    const raw = await response.text();
-
-    if (!response.ok) {
-      throw new Error(raw || "Backend request failed.");
+    function cleanExtractedText(text) {
+      return String(text || "")
+        .replace(/\r/g, " ")
+        .replace(/\n+/g, " ")
+        .replace(/\s+/g, " ")
+        .replace(/-\s+/g, "")
+        .trim();
     }
 
-    return JSON.parse(raw);
-  }
+    function shuffleArray(arr) {
+      const copy = [...arr];
+      for (let i = copy.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [copy[i], copy[j]] = [copy[j], copy[i]];
+      }
+      return copy;
+    }
 
-  async function generateQuestionFromText() {
-    const text = sourceText.value.trim();
-    if (!text) throw new Error("Extract or paste source text first.");
+    function resetSession() {
+      currentQuiz = null;
+      previousQuestions = [];
+      questionsAsked = 0;
+      bestScoreValue = 0;
+      lastScoreValue = 0;
+      answeredCurrent = false;
 
-    const limitedText = text.slice(0, 5000);
+      qCount.textContent = "0";
+      bestScore.textContent = "0";
+      lastScore.textContent = "0";
+      questionNumber.textContent = "Question 0";
+      questionText.innerHTML = 'No question yet. Click <span class="muted">Generate Question</span>.';
+      choicesBox.innerHTML = '<div class="muted">Choices will appear here after generating a question.</div>';
+      feedbackBox.innerHTML = '<div class="muted">AI feedback will appear here after you answer a question.</div>';
 
-    return await callBackend("generate-question-v2", {
-      text: limitedText,
-      difficulty: difficulty.value,
-      type: focusType.value,
-      mode: "multiple-choice",
-      choiceCount: 3
-    });
-  }
+      generateBtn.disabled = true;
+      nextBtn.disabled = true;
+      mainNextBtn.disabled = true;
+    }
 
-  async function evaluateAnswer(questionObj, selectedAnswer) {
-    return await callBackend("check-answer-v2", {
-      question: questionObj.question,
-      correctAnswer: questionObj.correct_answer,
-      selectedAnswer
-    });
-  }
+    function clearAll() {
+      pdfFile.value = "";
+      fileLabel.textContent = "No file selected";
+      sourceText.value = "";
+      difficulty.value = "medium";
+      focusType.value = "definition";
+      resetSession();
+      setStatus("Cleared. Upload a PDF, extract text, then generate a question.");
+    }
 
-  async function autoCheckAnswer(choice, btn) {
-    try {
-      if (!currentQuestion || isChecking) return;
+    async function extractPdfText(file) {
+      const arrayBuffer = await file.arrayBuffer();
+      const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
 
-      isChecking = true;
-      selectedChoice = choice;
+      let fullText = "";
 
-      document.querySelectorAll(".choice-btn").forEach(el => {
-        el.classList.remove("selected");
-        el.disabled = true;
+      for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+        const page = await pdf.getPage(pageNum);
+        const content = await page.getTextContent();
+        const strings = content.items.map(item => item.str);
+        fullText += "\n" + strings.join(" ");
+      }
+
+      return cleanExtractedText(fullText);
+    }
+
+    function getScoreClass(score) {
+      if (score >= 100) return "ok";
+      if (score >= 50) return "mid";
+      return "bad";
+    }
+
+    function updateStats() {
+      qCount.textContent = String(questionsAsked);
+      bestScore.textContent = String(bestScoreValue);
+      lastScore.textContent = String(lastScoreValue);
+    }
+
+    function renderQuiz(quiz) {
+      currentQuiz = quiz;
+      answeredCurrent = false;
+
+      questionNumber.textContent = `Question ${questionsAsked}`;
+      questionText.textContent = quiz.question || "No question generated.";
+      choicesBox.innerHTML = "";
+      feedbackBox.innerHTML = '<div class="muted">Choose an answer to get instant feedback.</div>';
+
+      nextBtn.disabled = true;
+      mainNextBtn.disabled = true;
+
+      const labels = ["A", "B", "C"];
+      const choices = shuffleArray(Array.isArray(quiz.choices) ? quiz.choices : []);
+
+      choices.forEach((choice, index) => {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "choice-btn";
+        btn.dataset.choice = choice;
+
+        btn.innerHTML = `
+          <span class="choice-badge">${labels[index] || index + 1}</span>
+          <span class="choice-text">${choice}</span>
+        `;
+
+        btn.addEventListener("click", () => handleChoiceClick(choice, btn));
+        choicesBox.appendChild(btn);
+      });
+    }
+
+    function handleChoiceClick(selectedChoice, selectedButton) {
+      if (!currentQuiz || answeredCurrent) return;
+
+      answeredCurrent = true;
+
+      const allButtons = [...choicesBox.querySelectorAll(".choice-btn")];
+      const correctAnswer = String(currentQuiz.correctAnswer || "").trim();
+      const picked = String(selectedChoice || "").trim();
+      const isCorrect = picked === correctAnswer;
+
+      allButtons.forEach(btn => {
+        btn.disabled = true;
+        const value = String(btn.dataset.choice || "").trim();
+
+        if (value === correctAnswer) {
+          btn.classList.add("correct");
+        } else if (value === picked && !isCorrect) {
+          btn.classList.add("wrong");
+        }
       });
 
-      btn.classList.add("selected");
+      selectedButton.classList.add("selected");
 
-      setStatus("Checking your answer...");
-      feedbackBox.innerHTML = `<div class="muted">Checking your answer...</div>`;
+      lastScoreValue = isCorrect ? 100 : 0;
+      bestScoreValue = Math.max(bestScoreValue, lastScoreValue);
+      updateStats();
 
-      const result = await evaluateAnswer(currentQuestion, choice);
-      renderFeedback(result, currentQuestion);
-      setStatus("Answer checked.");
-    } catch (err) {
-      setStatus(`Error: ${err.message}`);
-      document.querySelectorAll(".choice-btn").forEach(el => {
-        el.disabled = false;
-      });
-      isChecking = false;
-    }
-  }
+      const scoreClass = getScoreClass(lastScoreValue);
+      const resultText = isCorrect ? "Correct answer" : "Wrong answer";
+      const explanation = currentQuiz.explanation
+        ? currentQuiz.explanation
+        : "This result is based on the extracted PDF content.";
 
-  function renderChoices(choices) {
-    selectedChoice = null;
-    isChecking = false;
-    choicesBox.innerHTML = "";
+      feedbackBox.innerHTML = `
+        <div class="score ${scoreClass}">${lastScoreValue}% · ${resultText}</div>
+        <div><strong>Your answer:</strong> ${picked}</div>
+        <div><strong>Correct answer:</strong> ${correctAnswer}</div>
+        <div style="margin-top:10px;"><strong>Explanation:</strong> ${explanation}</div>
+      `;
 
-    if (!Array.isArray(choices) || choices.length === 0) {
-      choicesBox.innerHTML = `<div class="muted">No choices available.</div>`;
-      return;
+      nextBtn.disabled = false;
+      mainNextBtn.disabled = false;
     }
 
-    choices.forEach((choice, index) => {
-      const btn = document.createElement("button");
-      btn.type = "button";
-      btn.className = "choice-btn";
-      btn.textContent = `${String.fromCharCode(65 + index)}. ${choice}`;
+    async function generateQuestion() {
+      const text = sourceText.value.trim();
 
-      btn.addEventListener("click", () => {
-        autoCheckAnswer(choice, btn);
-      });
+      if (!text || text.length < 200) {
+        setStatus("Please extract enough PDF text first.");
+        return;
+      }
 
-      choicesBox.appendChild(btn);
-    });
-  }
+      try {
+        generateBtn.disabled = true;
+        nextBtn.disabled = true;
+        mainNextBtn.disabled = true;
+        setStatus("Generating question with AI...");
 
-  function renderFeedback(result, questionObj) {
-    const score = Number(result.score) || 0;
-    let scoreClass = "bad";
+        const response = await fetch(API_URL, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            text,
+            difficulty: difficulty.value,
+            focusType: focusType.value,
+            previousQuestions
+          })
+        });
 
-    if (score >= 80) scoreClass = "ok";
-    else if (score >= 50) scoreClass = "mid";
+        const data = await response.json();
 
-    feedbackBox.innerHTML = `
-      <div class="score ${scoreClass}">Score: ${escapeHtml(String(score))}/100</div>
-      <p style="margin-bottom:10px;"><strong>Verdict:</strong> ${escapeHtml(result.verdict || "unknown")}</p>
-      <p style="margin-bottom:10px;"><strong>Feedback:</strong> ${escapeHtml(result.feedback || "No feedback.")}</p>
-      <p style="margin-bottom:10px;"><strong>Correct answer:</strong> ${escapeHtml(questionObj.correct_answer || "")}</p>
-      <p class="muted"><strong>Expected idea:</strong> ${escapeHtml(questionObj.answer_idea || "")}</p>
-    `;
+        if (!response.ok) {
+          throw new Error(data.error || "Failed to generate question.");
+        }
 
-    document.querySelectorAll(".choice-btn").forEach(btn => {
-      const rawText = btn.textContent.replace(/^[A-Z]\.\s*/, "");
-      btn.disabled = true;
+        if (
+          !data.question ||
+          !Array.isArray(data.choices) ||
+          data.choices.length !== 3 ||
+          !data.correctAnswer
+        ) {
+          throw new Error("Invalid quiz format returned by server.");
+        }
 
-      if (rawText === questionObj.correct_answer) {
-        btn.classList.add("correct");
-      } else if (rawText === selectedChoice) {
-        btn.classList.add("wrong");
+        if (!previousQuestions.includes(data.question)) {
+          previousQuestions.push(data.question);
+        }
+
+        questionsAsked += 1;
+        updateStats();
+        renderQuiz(data);
+        setStatus("Question generated successfully.");
+      } catch (err) {
+        console.error(err);
+        setStatus(err.message || "Failed to generate question.");
+      } finally {
+        generateBtn.disabled = false;
+      }
+    }
+
+    extractBtn.addEventListener("click", async () => {
+      const file = pdfFile.files?.[0];
+
+      if (!file) {
+        setStatus("Please upload a PDF first.");
+        return;
+      }
+
+      try {
+        extractBtn.disabled = true;
+        generateBtn.disabled = true;
+        nextBtn.disabled = true;
+        mainNextBtn.disabled = true;
+        setStatus("Extracting text from PDF...");
+
+        resetSession();
+
+        const text = await extractPdfText(file);
+        sourceText.value = text;
+
+        if (!text || text.length < 200) {
+          setStatus("Extraction finished, but the text is too short. Try another PDF.");
+          return;
+        }
+
+        generateBtn.disabled = false;
+        setStatus("Text extracted successfully. You can now generate a question.");
+      } catch (err) {
+        console.error(err);
+        setStatus("Failed to extract text from PDF.");
+      } finally {
+        extractBtn.disabled = false;
       }
     });
 
-    lastScore.textContent = String(score);
-    if (score > best) {
-      best = score;
-      bestScore.textContent = String(best);
-    }
+    generateBtn.addEventListener("click", generateQuestion);
+    nextBtn.addEventListener("click", generateQuestion);
+    mainNextBtn.addEventListener("click", generateQuestion);
+    clearBtn.addEventListener("click", clearAll);
 
-    isChecking = false;
-  }
-
-  extractBtn.addEventListener("click", async () => {
-    try {
-      const file = pdfFile.files?.[0];
-      if (!file) throw new Error("Please choose a PDF file first.");
-
-      setStatus("Extracting PDF text...");
-      const text = await extractPdfText(file);
-      sourceText.value = text;
-      setStatus(`PDF text extracted. ${text.length} characters ready.`);
-    } catch (err) {
-      setStatus(`Error: ${err.message}`);
-    }
-  });
-
-  generateBtn.addEventListener("click", async () => {
-    try {
-      setStatus("Generating question...");
-      generateBtn.disabled = true;
-
-      const generated = await generateQuestionFromText();
-      currentQuestion = generated;
-      askedCount += 1;
-
-      qCount.textContent = String(askedCount);
-      questionNumber.textContent = `Question ${askedCount}`;
-      questionText.textContent = generated.question || "No question generated.";
-
-      renderChoices(generated.choices || []);
-      feedbackBox.innerHTML = `<div class="muted">Question ready. Select one choice to answer automatically.</div>`;
-      setStatus(`Question generated on topic: ${generated.topic || "General"}`);
-    } catch (err) {
-      setStatus(`Error: ${err.message}`);
-    } finally {
-      generateBtn.disabled = false;
-    }
-  });
-
-  if (checkBtn) {
-    checkBtn.style.display = "none";
-  }
-
-  clearBtn.addEventListener("click", () => {
-    sourceText.value = "";
-    selectedChoice = null;
-    currentQuestion = null;
-    askedCount = 0;
-    best = 0;
-    isChecking = false;
-
-    questionNumber.textContent = "Question 0";
-    questionText.textContent = "No question yet. Click Generate Question.";
-    choicesBox.innerHTML = `<div class="muted">Choices will appear here after generating a question.</div>`;
-    feedbackBox.innerHTML = `<div class="muted">AI feedback will appear here after you submit your answer.</div>`;
-    qCount.textContent = "0";
-    bestScore.textContent = "0";
-    lastScore.textContent = "0";
-    setStatus("Cleared.");
-  });
-</script>
+    resetSession();
+  </script>
 </body>
 </html>
